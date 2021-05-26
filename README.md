@@ -1,6 +1,6 @@
 # picklistToCSV
 
-**READ ME**
+
 Introduction -------------
 
 
