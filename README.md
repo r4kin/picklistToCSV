@@ -3,6 +3,7 @@
 **READ ME**
 Introduction -------------
 
+
 The Apex Class, "YRK_Picklist_Metadata", intends to extract the dependent picklist values from a Custom Case Object (Service Area, Category, and Sub-Category), and output the combinations
 of dependent fields to a csv file. Using Schema API in Apex, the "validFor" token of a given dependent picklist field can be revealed to show which controlling picklist values it is 
 dependent on. A popular decoding method is used to convert the "validFor" Base64-encoded map to a string. The method "getPicklistValues(..)" returns a map of a controlling picklist object
@@ -10,10 +11,12 @@ to a list of dependent picklist objects. The method "getCsv(..)" merges , format
 
 Requirements--------------   
 
+
 - Access York Salesforce Production Sandbox
 - Dependent multi-picklists on case object
 
 Steps---------------------
+
 
 1) Create Apex Class "YRK_Picklist_Metadata", copying code from "picklistToCsv_SCRIPT.txt"
 2) Call the following methods: 
