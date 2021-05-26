@@ -1,0 +1,109 @@
+public class YRK_Picklist_Metadata {
+    //Rakin Mohammed 2021/04/28 picklist script
+    
+   // public static void dosave(){
+   //     Map<Object,List<String>> map1 = getPicklistValues(Case.Category__c);	
+   //     Map<Object,List<String>> map2 = getPicklistValues(Case.AY_SubCategory__c);
+   //     String csvFile = getCsv(map1,map2);
+   // }
+    
+    public static Map<Object, List<String>> getPicklistValues (Schema.sObjectField dependToken){ 
+        Schema.DescribeFieldResult dependent = dependToken.getDescribe(); //assume dependent field exists
+        
+        Schema.sObjectField controlToken = dependent.getController(); //check if controlling field for dependent exists
+        if(controlToken == null) return null;
+        Schema.DescribeFieldResult control = controlToken.getDescribe();
+    
+        //API call Schema.PicklistEntry returns entry object
+        //The JSON string derived from these picklist objects contains "validFor" 
+        //"validFor" is a Base64-encoded map which indicates whether the specified picklist is valid for the corresponding controlling field
+        
+        //Making sure picklist doesn't contain checklists or any boolean fields
+        List<Schema.PicklistEntry> controlEntries = (control.getType() == Schema.DisplayType.Boolean ? null : control.getPicklistValues());
+               
+        //Bit64 Decoding Logic
+        Map<Object, List<String>> dependentPicklistValues = new Map<Object, List<String>>();	//The map we are trying to get. Shows relatioship map between the controlling field and the list of dependent values
+        String base64map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';	
+        
+        for(Schema.PicklistEntry entry: dependent.getPicklistValues()){ //iterates over active dependent picklist values
+            if(entry.isActive()){
+                List<String> base64chars = String.valueOf
+                        ( ((Map<String,Object>) JSON.deserializeUntyped( JSON.serialize(entry) )).get( 'validFor') ).split( '' ); // Uses Apex JSON class to deserialize and convert validFor field to a string (ex. "AaBc), as well as split up the chars 
+                
+                for( Integer index = 0; index < controlEntries.size(); index++){ //iterates over controlling picklist entries
+                    Object controlValue = (controlEntries == null 
+                                ? (Object) (index == 1)
+                                            : (Object) (controlEntries[index].isActive() ? controlEntries[index].getLabel() : null)
+                                  ); //if the controlling field is a picklist, then assign controlVal the same label as the picklist value
+                    
+                    Integer bitIndex = index / 6, bitShift = 5 - Math.mod( index, 6 );
+                    if  (controlValue == null ||  (base64map.indexOf( base64chars[ bitIndex ] ) & (1 << bitShift)) == 0) 
+                        continue; //Logic to locate character bit in validFor bitmap. indexOf converts the Base64 char to the value it represents
+                        
+                    //insert dependent picklist value into the controlling field list 
+                    if (!dependentPicklistValues.containsKey((String) controlValue)) 
+                                    dependentPicklistValues.put((String) controlValue, new List<String>());
+            
+                            dependentPicklistValues.get((String) controlValue).add(entry.getLabel()); 
+                }
+                
+            }
+        }
+        
+        return dependentPicklistValues;
+    }
+    
+    //Map<Object,List<String>> map1 = getPicklistValues(Case.Category__c);	
+    // Returns: {A=(x,y,z)}
+    //Map<Object,List<String>> map2 = getPicklistValues(Case.AY_SubCategory__c);
+    // Returns: {X=(l,m,n), Y=(o,p), Z=(q,r,s,t)}
+    
+    public static String getCsv (Map<Object, List<String>> map1, Map<Object, List<String>> map2){
+        String csvString = '';
+    	Set<Object> map1Set = map1.keySet();         	
+        for(Object key1: map1Set){ //Iterate through every controlling value in map1 (A)
+            List<String> list1 = map1.get(key1); //Get the list mapped to the controlling value (x,y,z)
+    
+            for(String item1: list1){ //Iterate through every item in the list
+                if(map2.keySet().contains(item1)){ //Check if the controlling values in map2 (X,Y,Z) contains the item in the list (x)
+                    List<String> list2 = map2.get(item1); //Get the list mapped to the new controlling value, item1 (l,m,n)
+    
+                    for(String item2: list2){ //Iterate through every item in the list
+			//Third map code, add "Map<Object, List<String>> map3" to parameters
+			//if(map3.keySet().contains(item2)){
+			//	List<String> list3 = map3.get(item3);
+			//	for(String item3: list3){	
+			//		csvString += key1 + ',' + item1 + ',' + item2 + ',' + item3 + "/n';
+			//	}	
+			//}
+                        
+			csvString += key1 + ',' + item1 + ',' + item2 +'/n'; //Add one row of data to the csv string (A,x,l)
+                    }
+                }
+            }
+        }
+        
+        return csvString;
+    }
+    
+    private static void stringToFile(){
+        Map<Object,List<String>> map1 = getPicklistValues(Case.Category__c);
+        Map<Object,List<String>> map2 = getPicklistValues(Case.AY_SubCategory__c);
+        String csvFile = getCsv(map1,map2);
+        
+        Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+        Messaging.EmailFileAttachment csvAttc = new Messaging.EmailFileAttachment();
+        
+        Blob csvBlob = Blob.valueOf(csvFile); 
+        String csvName = 'Picklist_Spreadsheet.csv'; 
+        csvAttc.setContentType('text/csv');
+        csvAttc.setFileName(csvName);
+        csvAttc.setBody(csvBlob);
+        
+        String[] sendTo = new String[]{'rakin.mohammed@york.ca'};
+        email.setToAddresses(sendTo);
+        email.setPlainTextBody('Attached is AY Spreadsheet');
+        email.setFileAttachments(new Messaging.EmailFileAttachment[]{csvAttc});
+        Messaging.sendEmail(new Messaging.SingleEmailMessage[]{email});
+    }
+}
