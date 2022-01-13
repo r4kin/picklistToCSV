@@ -29,9 +29,12 @@ Explanation----------------
   
 Uses Schema API to retrieve dependent picklist field object (ex. Category__c), and checks if picklist field has a controlling picklist (confirming the passed field is dependent). 
 The code then iterates and adds all picklist entries of the controlling picklist field(Service_Area_c) to a list. Next the code iterates through the dependent picklist field's 
-picklist entries and uses the JSON library to decode the "validFor" token and split the String to a list of characters. Using clever BitShift math, the code converts the list of 
-characters to the 6 bits it represents (using the "base64map"). This 6 bit key, called "controlValue", gives the controlling field entry which is added to the picklist map. The code 
-inserts the dependent picklist entry to the respective controlling picklist entry. 
+picklist entries and uses the JSON library to decode the "validFor" token and split the String to a list of characters. 
+	
+Using clever BitShift math, the code converts the list of 
+characters to the 6 bits it represents (using the "base64map"). This 6 bit key, called "controlValue", gives the controlling field entry which is added to the picklist map. The code inserts the dependent picklist entry to the respective controlling picklist entry. 
 
 Map<Object,List<String>> map1 = getPicklistValues(Case.Category__c);	      Returns: {A=(x,y,z)}
+	
+	
 Map<Object,List<String>> map2 = getPicklistValues(Case.AY_SubCategory__c);    Returns: {X=(l,m,n), Y=(o,p), Z=(q,r,s,t)}  
